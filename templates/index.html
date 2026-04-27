@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ollama Local UI</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="panel">
+          <div class="panel-header">
+            <h1>Ollama UI</h1>
+            <button id="new-chat-btn" type="button">New Chat</button>
+          </div>
+          <div class="section-title">Settings</div>
+          <label class="field">
+            <span>Ollama Host</span>
+            <input id="ollama-url-input" type="text" placeholder="http://localhost:11434" />
+          </label>
+          <div class="panel-actions">
+            <button id="save-settings-btn" type="button">Save Settings</button>
+          </div>
+          <div id="workspace-root" class="muted"></div>
+          <label class="field">
+            <span>Model</span>
+            <select id="model-select"></select>
+          </label>
+          <label class="field">
+            <span>Find Chat</span>
+            <input id="chat-search-input" type="text" placeholder="Filter saved chats" />
+          </label>
+          <div class="chat-list-wrap">
+            <div class="section-title">Saved Chats</div>
+            <div id="current-chat-label" class="muted">No chat selected.</div>
+            <div class="chat-toolbar">
+              <button id="rename-chat-btn" type="button">Rename</button>
+              <button id="delete-chat-btn" type="button">Delete</button>
+              <button id="export-md-btn" type="button">Export MD</button>
+              <button id="export-json-btn" type="button">Export JSON</button>
+            </div>
+            <div id="chat-list" class="chat-list"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="section-title">Project Context</div>
+          <p class="muted">Read-only files from `project_context/`.</p>
+          <div id="context-list" class="context-list"></div>
+          <pre id="context-preview" class="context-preview">Select a context file to preview it here.</pre>
+        </div>
+        <div class="panel">
+          <div class="section-title">Generated Files</div>
+          <div id="file-history" class="file-history"></div>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <section id="messages" class="messages"></section>
+
+        <section class="composer">
+          <label class="field">
+            <span>Prompt</span>
+            <textarea id="prompt-input" rows="6" placeholder="Ask Ollama something, or say: write this as a .md/.txt/.py/.sh file"></textarea>
+          </label>
+          <div class="composer-actions">
+            <div id="selected-context" class="selected-context"></div>
+            <button id="send-btn" type="button">Send</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="file-dialog">
+      <form method="dialog" class="dialog-card">
+        <h2>Save Generated File</h2>
+        <label class="field">
+          <span>Filename inside workspace/</span>
+          <input id="file-name-input" type="text" placeholder="notes/output.md" />
+        </label>
+        <p id="file-path-hint" class="muted"></p>
+        <label class="field">
+          <span>Preview</span>
+          <textarea id="file-content-preview" rows="16"></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button id="file-cancel-btn" type="button">Cancel</button>
+          <button id="file-save-btn" type="button">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
