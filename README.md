@@ -212,6 +212,35 @@ python3 -m compileall app
 node --check static/app.js
 ```
 
+### Suggested PR Workflow
+
+You do not need to memorize this. It can be the default rhythm for future changes.
+
+1. Create a branch for the change.
+2. Make the code and documentation updates.
+3. Run a quick local verification pass.
+4. Commit the work with a focused commit message.
+5. Push the branch to GitHub.
+6. Open a Draft PR while the work is still in progress.
+7. Keep updating that PR until the change is ready to merge.
+
+Example branch flow:
+
+```bash
+git checkout -b feature/some-change
+git add .
+git commit -m "Describe the change"
+git push -u origin feature/some-change
+```
+
+Why use a Draft PR:
+
+- it gives each change a clear reviewable checkpoint
+- it keeps notes, screenshots, and follow-up items in one place
+- it makes it easier to revisit unfinished work later
+
+For very small personal tweaks, you can still commit directly to `main` if you want. The draft PR flow is just a cleaner habit when changes start to pile up.
+
 ## What Has Been Built So Far
 
 - FastAPI app scaffold
@@ -232,6 +261,21 @@ node --check static/app.js
 - Arbitrary file system writes outside `workspace/`
 - Rich authentication or multi-user support
 - Full Markdown parser dependency
+
+## v1.1 Backlog
+
+This is a lightweight place for future ideas, polish items, bugs, and experiments. You can keep adding to it whenever you notice something worth tracking.
+
+- Add copy buttons for individual code blocks inside assistant responses
+- Add visible timestamps in the chat UI
+- Add a "reuse prompt" or "send back to composer" action from chat history
+- Add a generated-file preview modal from the history panel
+- Add simple message search inside the current chat
+- Add per-chat tags or favorites
+- Add better mobile spacing and layout polish
+- Add optional streaming responses from Ollama
+- Add a small test suite for key API routes and workspace safety rules
+- Consider moving backlog items into GitHub Issues if the list grows
 
 ## License
 
