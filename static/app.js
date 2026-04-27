@@ -4,8 +4,13 @@ const state = {
   selectedContextFiles: new Set(),
   pendingFileMessageId: null,
   pendingFileChatId: null,
+  pendingArtifactSourcePrompt: "",
+  pendingArtifactModel: "",
   chatSearch: "",
   chats: [],
+  artifactSearch: "",
+  artifacts: [],
+  selectedArtifactId: null,
   settings: null,
 };
 
@@ -22,6 +27,9 @@ const elements = {
   exportJsonBtn: document.getElementById("export-json-btn"),
   chatList: document.getElementById("chat-list"),
   fileHistory: document.getElementById("file-history"),
+  artifactSearchInput: document.getElementById("artifact-search-input"),
+  artifactList: document.getElementById("artifact-list"),
+  artifactView: document.getElementById("artifact-view"),
   messages: document.getElementById("messages"),
   promptInput: document.getElementById("prompt-input"),
   sendBtn: document.getElementById("send-btn"),
@@ -35,6 +43,13 @@ const elements = {
   filePathHint: document.getElementById("file-path-hint"),
   fileCancelBtn: document.getElementById("file-cancel-btn"),
   fileSaveBtn: document.getElementById("file-save-btn"),
+  artifactDialog: document.getElementById("artifact-dialog"),
+  artifactNameInput: document.getElementById("artifact-name-input"),
+  artifactTypeInput: document.getElementById("artifact-type-input"),
+  artifactTagsInput: document.getElementById("artifact-tags-input"),
+  artifactContentPreview: document.getElementById("artifact-content-preview"),
+  artifactCancelBtn: document.getElementById("artifact-cancel-btn"),
+  artifactSaveBtn: document.getElementById("artifact-save-btn"),
 };
 
 async function api(path, options = {}) {
@@ -86,6 +101,10 @@ async function copyText(text, label = "Copied") {
 
 function truncate(text, length = 90) {
   return text.length > length ? `${text.slice(0, length - 1)}...` : text;
+}
+
+function artifactNameFromPrompt(promptText) {
+  return slugify(promptText || "artifact") || "artifact";
 }
 
 function escapeHtml(text) {
@@ -158,6 +177,23 @@ function detectExtension(language, promptText, content) {
   }
 
   return ".txt";
+}
+
+function detectArtifactType(language, promptText, content) {
+  const lowerPrompt = promptText.toLowerCase();
+  if (["bash", "shell", "sh", "python", "py", "javascript", "js"].includes(language)) {
+    return "script";
+  }
+  if (["json", "yaml", "yml", "toml", "ini", "env"].includes(language)) {
+    return "config";
+  }
+  if (["markdown", "md"].includes(language) || lowerPrompt.includes(".md")) {
+    return "doc";
+  }
+  if (content.startsWith("#!")) {
+    return "script";
+  }
+  return "note";
 }
 
 function suggestFilename(messageText, promptText) {
@@ -285,6 +321,11 @@ function renderMessages(messages) {
       saveButton.type = "button";
       saveButton.textContent = "Preview Save";
       saveButton.addEventListener("click", () => openFileDialog(message, lastUserPrompt));
+      const artifactButton = document.createElement("button");
+      artifactButton.type = "button";
+      artifactButton.textContent = "Save as Artifact";
+      artifactButton.addEventListener("click", () => openArtifactDialog(message, lastUserPrompt));
+      actions.appendChild(artifactButton);
       actions.appendChild(quickSaveButton);
       actions.appendChild(saveButton);
     }
@@ -295,6 +336,81 @@ function renderMessages(messages) {
   }
 
   elements.messages.scrollTop = elements.messages.scrollHeight;
+}
+
+function renderArtifactList(entries) {
+  elements.artifactList.innerHTML = "";
+  const needle = state.artifactSearch.toLowerCase();
+  const filtered = entries.filter((entry) => {
+    const haystack = `${entry.name} ${entry.type} ${entry.tags || ""} ${entry.source_prompt || ""}`.toLowerCase();
+    return haystack.includes(needle);
+  });
+
+  if (!filtered.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "No artifacts match this filter.";
+    elements.artifactList.appendChild(empty);
+    renderArtifactView(null);
+    return;
+  }
+
+  if (!filtered.some((entry) => entry.id === state.selectedArtifactId)) {
+    state.selectedArtifactId = filtered[0].id;
+  }
+
+  for (const entry of filtered) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `artifact-item${entry.id === state.selectedArtifactId ? " active" : ""}`;
+    button.innerHTML = `<strong>${escapeHtml(entry.name)}</strong><div class="artifact-item-meta">${escapeHtml(entry.type)}${entry.tags ? ` | ${escapeHtml(entry.tags)}` : ""}</div>`;
+    button.addEventListener("click", () => {
+      state.selectedArtifactId = entry.id;
+      renderArtifactList(state.artifacts);
+    });
+    elements.artifactList.appendChild(button);
+  }
+
+  const selected = filtered.find((entry) => entry.id === state.selectedArtifactId) || filtered[0];
+  renderArtifactView(selected);
+}
+
+function renderArtifactView(entry) {
+  if (!entry) {
+    elements.artifactView.textContent = "Select an artifact to preview it here.";
+    return;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = `
+    <strong>${escapeHtml(entry.name)}</strong>
+    <div class="artifact-item-meta">Type: ${escapeHtml(entry.type)}${entry.tags ? ` | Tags: ${escapeHtml(entry.tags)}` : ""}</div>
+    <div class="artifact-item-meta">Model: ${escapeHtml(entry.model || "")}</div>
+    <div class="artifact-item-meta">Created: ${escapeHtml(entry.created_at)}</div>
+    <pre class="context-preview">${escapeHtml(entry.content)}</pre>
+  `;
+
+  const actions = document.createElement("div");
+  actions.className = "artifact-view-actions";
+
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.textContent = "Copy Artifact";
+  copyButton.addEventListener("click", async () => {
+    await copyText(entry.content, "Artifact copied.");
+  });
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.textContent = "Delete Artifact";
+  deleteButton.addEventListener("click", async () => {
+    await deleteArtifact(entry.id);
+  });
+
+  actions.append(copyButton, deleteButton);
+
+  elements.artifactView.innerHTML = "";
+  elements.artifactView.append(wrapper, actions);
 }
 
 function renderChatList(chats) {
@@ -471,6 +587,12 @@ async function refreshFileHistory() {
   renderFileHistory(entries);
 }
 
+async function refreshArtifacts() {
+  const entries = await api("/api/artifacts");
+  state.artifacts = entries;
+  renderArtifactList(entries);
+}
+
 async function loadChat(chatId) {
   const chat = await api(`/api/chats/${chatId}`);
   state.currentChatId = chatId;
@@ -527,6 +649,19 @@ async function deleteCurrentChat() {
   renderMessages([]);
   await refreshChats();
   await refreshFileHistory();
+}
+
+async function deleteArtifact(artifactId) {
+  const confirmed = window.confirm("Delete this artifact?");
+  if (!confirmed) {
+    return;
+  }
+  await api(`/api/artifacts/${artifactId}`, { method: "DELETE" });
+  if (state.selectedArtifactId === artifactId) {
+    state.selectedArtifactId = null;
+  }
+  await refreshArtifacts();
+  setStatus("Artifact deleted.");
 }
 
 async function exportCurrentChat(format) {
@@ -592,6 +727,40 @@ async function openFileDialog(message, promptText = "") {
   }
 
   elements.fileDialog.showModal();
+}
+
+function openArtifactDialog(message, promptText = "") {
+  const blocks = parseCodeBlocks(message.content);
+  const mainBlock = blocks[0];
+  const content = extractSuggestedFileContent(message.content);
+  const language = mainBlock ? mainBlock.language : "";
+
+  state.pendingArtifactSourcePrompt = promptText;
+  state.pendingArtifactModel = message.model || "";
+  elements.artifactNameInput.value = artifactNameFromPrompt(promptText);
+  elements.artifactTypeInput.value = detectArtifactType(language, promptText, content);
+  elements.artifactTagsInput.value = "";
+  elements.artifactContentPreview.value = content;
+  elements.artifactDialog.showModal();
+}
+
+async function saveArtifact() {
+  const artifact = await api("/api/artifacts", {
+    method: "POST",
+    body: JSON.stringify({
+      name: elements.artifactNameInput.value.trim(),
+      type: elements.artifactTypeInput.value,
+      content: elements.artifactContentPreview.value,
+      source_prompt: state.pendingArtifactSourcePrompt,
+      model: state.pendingArtifactModel || null,
+      tags: elements.artifactTagsInput.value.trim() || null,
+    }),
+  });
+
+  state.selectedArtifactId = artifact.id;
+  elements.artifactDialog.close();
+  await refreshArtifacts();
+  setStatus(`Saved artifact: ${artifact.name}`);
 }
 
 async function quickSaveMessage(message, promptText = "") {
@@ -684,10 +853,22 @@ elements.chatSearchInput.addEventListener("input", (event) => {
   state.chatSearch = event.target.value;
   renderChatList(state.chats);
 });
+elements.artifactSearchInput.addEventListener("input", (event) => {
+  state.artifactSearch = event.target.value;
+  renderArtifactList(state.artifacts);
+});
 elements.fileCancelBtn.addEventListener("click", () => elements.fileDialog.close());
 elements.fileSaveBtn.addEventListener("click", saveDraft);
 elements.fileNameInput.addEventListener("input", updateDraftHint);
 elements.fileContentPreview.addEventListener("input", updateDraftHint);
+elements.artifactCancelBtn.addEventListener("click", () => elements.artifactDialog.close());
+elements.artifactSaveBtn.addEventListener("click", async () => {
+  try {
+    await saveArtifact();
+  } catch (error) {
+    setStatus(error.message);
+  }
+});
 
 window.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -696,6 +877,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     await refreshChats();
     await loadContext();
     await refreshFileHistory();
+    await refreshArtifacts();
     updateSelectedContextText();
   } catch (error) {
     setStatus(error.message);

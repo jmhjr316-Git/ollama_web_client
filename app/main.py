@@ -8,6 +8,8 @@ from starlette.requests import Request
 
 from .db import get_connection, init_db
 from .schemas import (
+    ArtifactCreateRequest,
+    ArtifactEntry,
     ChatCreateResponse,
     ChatDetail,
     ChatRequest,
@@ -89,6 +91,10 @@ def build_chat_markdown(chat: dict, messages: list[dict]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
+def normalize_artifact_row(row: dict) -> ArtifactEntry:
+    return ArtifactEntry(**row)
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     ensure_runtime_dirs()
@@ -104,6 +110,60 @@ async def index(request: Request) -> HTMLResponse:
 async def get_models() -> list[ModelInfo]:
     models = await fetch_models()
     return [ModelInfo(name=name) for name in models]
+
+
+@app.get("/api/artifacts", response_model=list[ArtifactEntry])
+def get_artifacts() -> list[ArtifactEntry]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, name, type, content, source_prompt, model, created_at, tags
+            FROM artifacts
+            ORDER BY created_at DESC, id DESC
+            """
+        ).fetchall()
+    return [normalize_artifact_row(dict(row)) for row in rows]
+
+
+@app.post("/api/artifacts", response_model=ArtifactEntry)
+def create_artifact(request: ArtifactCreateRequest) -> ArtifactEntry:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO artifacts (name, type, content, source_prompt, model, tags)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                request.name.strip(),
+                request.type,
+                request.content,
+                request.source_prompt,
+                request.model,
+                request.tags.strip() if request.tags else None,
+            ),
+        )
+        artifact_id = int(cursor.lastrowid)
+        conn.commit()
+        row = conn.execute(
+            """
+            SELECT id, name, type, content, source_prompt, model, created_at, tags
+            FROM artifacts
+            WHERE id = ?
+            """,
+            (artifact_id,),
+        ).fetchone()
+    return normalize_artifact_row(dict(row))
+
+
+@app.delete("/api/artifacts/{artifact_id}")
+def delete_artifact(artifact_id: int) -> dict[str, bool]:
+    with get_connection() as conn:
+        row = conn.execute("SELECT id FROM artifacts WHERE id = ?", (artifact_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Artifact not found.")
+        conn.execute("DELETE FROM artifacts WHERE id = ?", (artifact_id,))
+        conn.commit()
+    return {"deleted": True}
 
 
 @app.get("/api/settings", response_model=SettingsResponse)

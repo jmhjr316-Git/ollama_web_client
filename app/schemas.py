@@ -47,6 +47,26 @@ class ChatResponse(BaseModel):
     assistant_message: MessageOut
 
 
+class ArtifactCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    type: Literal["script", "note", "config", "doc"]
+    content: str
+    source_prompt: str
+    model: str | None = None
+    tags: str | None = None
+
+
+class ArtifactEntry(BaseModel):
+    id: int
+    name: str
+    type: Literal["script", "note", "config", "doc"]
+    content: str
+    source_prompt: str
+    model: str | None
+    created_at: str
+    tags: str | None
+
+
 class ModelInfo(BaseModel):
     name: str
 

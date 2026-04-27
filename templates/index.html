@@ -53,6 +53,15 @@
           <div class="section-title">Generated Files</div>
           <div id="file-history" class="file-history"></div>
         </div>
+        <div class="panel">
+          <div class="section-title">Artifacts</div>
+          <label class="field">
+            <span>Find Artifact</span>
+            <input id="artifact-search-input" type="text" placeholder="Filter artifacts" />
+          </label>
+          <div id="artifact-list" class="artifact-list"></div>
+          <div id="artifact-view" class="artifact-view muted">Select an artifact to preview it here.</div>
+        </div>
       </aside>
 
       <main class="main-panel">
@@ -86,6 +95,37 @@
         <div class="dialog-actions">
           <button id="file-cancel-btn" type="button">Cancel</button>
           <button id="file-save-btn" type="button">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="artifact-dialog">
+      <form method="dialog" class="dialog-card">
+        <h2>Save Artifact</h2>
+        <label class="field">
+          <span>Name</span>
+          <input id="artifact-name-input" type="text" placeholder="artifact-note" />
+        </label>
+        <label class="field">
+          <span>Type</span>
+          <select id="artifact-type-input">
+            <option value="note">note</option>
+            <option value="doc">doc</option>
+            <option value="script">script</option>
+            <option value="config">config</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Tags</span>
+          <input id="artifact-tags-input" type="text" placeholder="optional, comma-separated" />
+        </label>
+        <label class="field">
+          <span>Content</span>
+          <textarea id="artifact-content-preview" rows="14"></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button id="artifact-cancel-btn" type="button">Cancel</button>
+          <button id="artifact-save-btn" type="button">Save Artifact</button>
         </div>
       </form>
     </dialog>

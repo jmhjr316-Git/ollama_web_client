@@ -29,6 +29,7 @@ The project is intentionally simple:
 - Rename and delete chat actions
 - Export the current chat as Markdown or JSON
 - Copy any message content
+- Save assistant output as artifacts
 
 ### File Generation
 
@@ -40,6 +41,15 @@ The project is intentionally simple:
 - Generated file history panel
 - Jump from file history back to the source chat/message
 - Logging of generated file path, source prompt, and overwrite status
+
+### Artifacts
+
+- Artifact storage in SQLite
+- Artifact sidebar panel with preview
+- Save artifacts from assistant responses
+- Artifact copy and delete actions
+- Simple artifact search/filter
+- Artifact fields include name, type, content, source prompt, model, timestamp, and optional tags
 
 ### Prompt Context
 
@@ -157,6 +167,15 @@ All saved output stays inside:
 workspace/
 ```
 
+### Save Assistant Output As Artifacts
+
+1. Generate a response from the assistant.
+2. Click `Save as Artifact` on the assistant message.
+3. Choose an artifact name, type, and optional tags.
+4. Save it to the artifact library.
+
+Artifacts are stored in SQLite and can be searched, previewed, copied, and deleted from the sidebar.
+
 ## API Overview
 
 Main routes:
@@ -173,6 +192,9 @@ Main routes:
 - `GET /api/chats/{chat_id}/export.md` export chat as Markdown
 - `GET /api/chats/{chat_id}/export.json` export chat as JSON
 - `POST /api/chat` send prompt and store reply
+- `GET /api/artifacts` list artifacts
+- `POST /api/artifacts` create an artifact
+- `DELETE /api/artifacts/{artifact_id}` delete an artifact
 - `GET /api/context` list read-only context files
 - `GET /api/context/file` fetch a context file
 - `GET /api/files/history` list generated file history
@@ -254,6 +276,7 @@ For very small personal tweaks, you can still commit directly to `main` if you w
 - Settings panel for Ollama host
 - Chat export to Markdown and JSON
 - Message copy actions and file-history jump-back navigation
+- Artifact storage, listing, preview, copy, and delete flows
 
 ## Not In Scope For v1
 
@@ -262,11 +285,17 @@ For very small personal tweaks, you can still commit directly to `main` if you w
 - Rich authentication or multi-user support
 - Full Markdown parser dependency
 
+## Known Limitations
+
+- Artifact preview is text-first and intentionally simple
+- Assistant Markdown rendering is lightweight, not a full Markdown implementation
+- Manual UI verification still depends on running the app locally in a browser
+- SQLite is used for simplicity and local-first persistence, not multi-user scale
+
 ## v1.1 Backlog
 
 This is a lightweight place for future ideas, polish items, bugs, and experiments. You can keep adding to it whenever you notice something worth tracking.
 
-- Add copy buttons for individual code blocks inside assistant responses
 - Add visible timestamps in the chat UI
 - Add a "reuse prompt" or "send back to composer" action from chat history
 - Add a generated-file preview modal from the history panel
